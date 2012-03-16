@@ -243,13 +243,21 @@ class SvnDriver extends VcsDriver
 
         $exit = $processExecutor->execute(
             sprintf(
-                'svn info --non-interactive %s %s 2>/dev/null',
-                $this->getSvnCredentialString(),
+                'svn info --non-interactive --trust-server-cert %s',
                 escapeshellarg($url)
             ),
             $ignored
         );
-        return $exit === 0;
+        if ($exit === 0) {
+            // This is definitely a Subversion repository.
+            return true;
+        }
+        if (preg_match('/authorization failed/i', $processExecutor->getErrorOutput())) {
+            // This is likely a remote Subversion repository that requires
+            // authentication. We will handle actual authentication later.
+            return true;
+        }
+        return false;
     }
 
     /**
